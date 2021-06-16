@@ -1,0 +1,20 @@
+# Project exclude paths
+/.gradle/
+/.run/
+/build/
+/.idea/
+/test/
+/out/
+/run/
+/data/
+/cache/
+/config/
+/MxLibData/
+/plugins/
+/assets/
+/bots/
+/analysis_logs/
+/src/test/kotlin
+
+.idea
+/assets/sprites/
