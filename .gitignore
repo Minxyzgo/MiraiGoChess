@@ -3,7 +3,6 @@
 /.run/
 /build/
 /.idea/
-/test/
 /out/
 /run/
 /data/
@@ -14,7 +13,6 @@
 /assets/
 /bots/
 /analysis_logs/
-/src/test/kotlin
 
 .idea
 /assets/sprites/
