@@ -15,4 +15,9 @@
 /analysis_logs/
 
 .idea
+/run
+.run
+
+/src/test/kotlin/
+
 /assets/sprites/

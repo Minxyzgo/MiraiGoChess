@@ -9,6 +9,7 @@ Mirai 的一个开源围棋插件
 支持功能
 - 基础下棋，吃子，棋局使用图片实时浏览
 - 胜负判断 (使用kataGo)
+- 悔棋
 - 打劫判断(可能有bug) 自杀判断
 
 本插件围棋绘图，吃子等参考自 [Krumitz](https://www.cnblogs.com/phyger/p/14058668.html) 十分感谢这位作者

@@ -7,6 +7,7 @@ import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.image.BufferedImage
 
+typealias Stones = Array<Array<StoneColor>>
 
 class ChessPad(
     val blackPlayer: Player,
@@ -28,12 +29,27 @@ class ChessPad(
     var currentImage: BufferedImage = BufferedImage(560, 600, BufferedImage.TYPE_INT_RGB)
     var graphics: Graphics2D = currentImage.createGraphics()
     var blackMoving = true
-    var lastIllogical = false
-    private var move: Array<Array<StoneColor>> = Array(19) { Array(19) { StoneColor.None } }
+    var isTakingStoneLastTime = false
+    private var lastBlackChess: Stones? = null
+    private var lastWhiteChess: Stones? = null
+    private var move: Stones = Array(19) { Array(19) { StoneColor.None } }
     private var teNum: Int = 1
+    private var isReDraw = false
     private var moveTeNum: Array<Array<Int>> = Array(19) { Array(19) { -1 } }
     private var lastCoordinateX: Int
     private var lastCoordinateY: Int
+
+    fun Stones.copyChess() = Array(19) {
+        this@copyChess[it].clone()
+    }
+
+    fun Stones.debug() {
+        forEachIndexed { x, stone ->
+            stone.forEachIndexed { y, color ->
+                if(color != StoneColor.None) println("color: $color x: $x, y: $y")
+            }
+        }
+    }
 
     fun paint() {
         graphics.background = Color.ORANGE
@@ -78,6 +94,62 @@ class ChessPad(
         graphics.fillOval(266, 266, 8, 8)
     }
 
+    fun nowPlayer() = if(blackMoving) blackPlayer else whitePlayer
+
+    fun regretChess(): Int {
+        val player = nowPlayer()
+        // 当玩家用完悔棋机会时
+        if(player.regretChance <= 0) return 3
+        when(player.color) {
+            StoneColor.Black -> {
+                return if(lastBlackChess != null) {
+                    if(move === lastBlackChess) {
+
+                        //当已经悔棋时， 应不能再继续悔棋， 抛出
+                        4
+                    } else {
+                        move = lastBlackChess!!
+                        redraw()
+                        player.regretChance--
+                        //当成功悔棋
+
+                        schedule.removeLast()
+                        schedule.removeLastOrNull()
+                        0
+                    }
+                } else {
+
+                    //当玩家并没有下棋时
+                    1
+                }
+            }
+
+            StoneColor.White -> {
+                return if(lastWhiteChess != null) {
+                    if(move === lastWhiteChess) {
+                        4
+                    } else {
+                        move = lastWhiteChess!!
+                        redraw()
+                        player.regretChance--
+
+                        schedule.removeLast()
+                        schedule.removeLastOrNull()
+                        0
+                    }
+                } else {
+                    1
+                }
+            }
+
+            StoneColor.None -> {
+
+                //这不应该存在
+                return 2
+            }
+        }
+    }
+
     suspend fun placeStone(
         coordinateX: Int,
         coordinateY: Int,
@@ -85,15 +157,11 @@ class ChessPad(
         sender: Member
     ): Boolean {
 
-        schedule.add(intArrayOf(coordinateX, coordinateY))
-
         // 这里用棋盘坐标乘以棋盘每路之间的宽度 -- 25
         // 再加上棋子的宽度、高度的一半 -- 10
         // 得到的是落子类绘图方法需要的坐标
         val placeX = (coordinateX + 1) * 25 + 10
         val placeY = (coordinateY + 1) * 25 + 10
-
-        var redraw = false
 
         suspend fun place(player: Player): Boolean {
             if(sender.id != player.qqNumber) {
@@ -101,14 +169,28 @@ class ChessPad(
                 return false
             }
 
-            val move2 = move.copyOf()
+            /*
+             可能会很废内存，但我不知道怎么优化了(笑哭
+             */
+            if(player.color == StoneColor.Black) {
+                lastBlackChess = move.copyChess()
+            } else {
+                lastWhiteChess = move.copyChess()
+            }
+
+            val move2: Stones = move.copyChess()
+
             move2[coordinateX][coordinateY] = player.color
             if (TakeRules.takeStones(move2, coordinateX, coordinateY)) {
-                if(!takeStones(move2, sender, contact, coordinateX, coordinateY)) return false
-                redraw = true
-                println("提子")
+                if(!takeStones(move2, contact, coordinateX, coordinateY)) {
+                    isReDraw = true
+                    return false
+                }
+
+                isTakingStoneLastTime = true
+                isReDraw = true
             } else {
-                println("落子")
+                isTakingStoneLastTime = false
             }
             // 落子、绘图
             Utils.placeStone(player, placeX, placeY, this.graphics.create())
@@ -123,8 +205,10 @@ class ChessPad(
             // 设置有子
             moveTeNum[coordinateX][coordinateY] = teNum
             teNum++
-            move[coordinateX][coordinateY] = player.color
-            if(redraw) redraw()
+
+            move = move2
+            schedule.add(intArrayOf(coordinateX, coordinateY))
+            if(isReDraw) redraw()
             return true
 
         }
@@ -133,7 +217,7 @@ class ChessPad(
         // 判断是否在棋盘内
         if (isInBoard(coordinateX, coordinateY)) {
             if (!isAlreadyHadStone(move, coordinateX, coordinateY)) {
-                if(!place(if(blackMoving) blackPlayer else whitePlayer)) return false
+                if(!place(nowPlayer())) return false
 
 
                 // 高亮最后一手，并将倒数第二手的高亮去除
@@ -164,8 +248,7 @@ class ChessPad(
 
     // 提子
     private suspend fun takeStones(
-        allStone: Array<Array<StoneColor>>,
-        sender: Member,
+        allStone: Stones,
         contact: Contact,
         x: Int,
         y: Int
@@ -180,7 +263,6 @@ class ChessPad(
 
         val takeStones: Array<Array<IntArray>> = TakeRules.takeStones
         var illogical = 0
-        val cacheIllogical = lastIllogical
         for(i in 0..3) {
             illogical += length[i][0]
         }
@@ -203,13 +285,9 @@ class ChessPad(
                     // 提子
                     Utils.takeStone(removeX, removeY, this.graphics)
                     if(illogical == 1) {
-                        if (coordinateX == lastCoordinateX && coordinateY == lastCoordinateY) {
-                            if(lastIllogical) {
-                                contact.sendMessage("触发打劫，请换一个位置下棋")
-                                return false
-                            } else {
-                                lastIllogical = true
-                            }
+                        if (coordinateX == lastCoordinateX && coordinateY == lastCoordinateY && isTakingStoneLastTime) {
+                            contact.sendMessage("触发打劫，请换一个位置下棋")
+                            return false
                         }
                         println("上一次提子: $lastStone x: $coordinateX y: $coordinateY")
                     }
@@ -221,8 +299,6 @@ class ChessPad(
             contact.sendMessage("触发自杀，请换一个位置下棋")
             return false
         }
-
-        if(cacheIllogical == lastIllogical) lastIllogical = false
 
         return true
     }
@@ -257,6 +333,8 @@ class ChessPad(
                 }
             }
         }
+
+        isReDraw = false
     }
 
     /**

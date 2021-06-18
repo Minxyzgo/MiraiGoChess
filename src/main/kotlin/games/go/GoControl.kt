@@ -2,14 +2,12 @@ package games.go
 
 import KotlinMain
 import com.beust.klaxon.JsonObject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import net.mamoe.mirai.contact.Contact
-import net.mamoe.mirai.contact.Contact.Companion.sendImage
 import net.mamoe.mirai.contact.Member
+import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.at
+import net.mamoe.mirai.utils.ExternalResource.Companion.uploadAsImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
@@ -29,6 +27,7 @@ class GoControl : Closeable {
     var timeOutJob: Job? = null
     var canCount = false
     var lastReadyNumber = 0L
+
     private val format = DecimalFormat("#.0000")
     private fun Double.format() = format.format(this)
     suspend fun main(
@@ -54,12 +53,16 @@ class GoControl : Closeable {
         suspend fun isYourRound() = (checkPlayer() && if(chessPad!!.blackMoving) sender.id == chessPad!!.blackPlayer.qqNumber else sender.id == chessPad!!.whitePlayer.qqNumber).also {
             if(!it) contact.sendMessage("这不是你的回合!")
         }
-        //发送围棋图片
-        suspend fun sendImage() = contact.launch(Dispatchers.IO) {
+
+        suspend fun image() = contact.async(Dispatchers.IO) {
             val os = ByteArrayOutputStream()
             ImageIO.write(chessPad!!.currentImage, "png", os)
-            val input = ByteArrayInputStream(os.toByteArray())
-            contact.sendImage(input)
+            ByteArrayInputStream(os.toByteArray()).uploadAsImage(contact)
+        }.await()
+
+        //发送围棋图片
+        suspend fun sendImage() {
+            contact.sendMessage(image())
         }
 
         //初始化游戏
@@ -134,14 +137,41 @@ class GoControl : Closeable {
                     .过 跳过回合
                     .投降 认输。
                     .下棋(坐标) 根据棋面坐标决定 如 .下棋J9 将会下棋在天元位置
-                    当支持katago时，你可以使用
+                    当支持KataGo时，你可以使用
                     .数子 双方都同意后进行判断胜负，未启用时不可使用。
+                    .悔棋 在你的回合时，你可以悔棋。注意不能多次悔棋
+                    github开源项目
                     Powered by Minxyzgo
-                    Katago 提供计算支持
+                    KataGo 计算支持
                 """.trimIndent())
             }
             "执黑" -> acceptPlayer(StoneColor.Black)
             "执白" -> acceptPlayer(StoneColor.White)
+            "悔棋" -> {
+                if(checkPlayer() && isStartingGame && isYourRound()) {
+                    when(chessPad!!.regretChess()) {
+                        0 -> {
+                            contact.sendMessage(
+                                PlainText(
+                                    "你已成功悔棋! 请继续下棋。 剩余悔棋次数: ${chessPad!!.nowPlayer().regretChance}"
+                                ) + image()
+                            )
+                        }
+
+                        1 -> {
+                            contact.sendMessage("你还没有下棋!")
+                        }
+
+                        3 -> {
+                            contact.sendMessage("你悔棋次数已经用完了!")
+                        }
+
+                        4 -> {
+                            contact.sendMessage("你已经悔过棋了! 不能再悔了")
+                        }
+                    }
+                }
+            }
             "就绪" -> {
                 if(timeOutJob == null && checkPlayer() && !isStartingGame) {
                     contact.sendMessage("玩家并未到齐!")
@@ -272,13 +302,9 @@ class GoControl : Closeable {
                     delay(50000)
                     contact.sendMessage(timeOutPlayer.user!!.at() + "请尽快下棋，否则因为超时而判负!")
                     delay(50000)
+
+                    contact.sendMessage("玩家${timeOutPlayer.user.nameCard}因为超时而失败，游戏结束")
                     exitGame()
-                    try {
-                        contact.sendMessage("玩家${timeOutPlayer.user.nameCard}因为超时而失败，游戏结束")
-                    } catch(e: Exception) {
-                        //有时候会抛出，暂不知道原因
-                        contact.sendMessage("有玩家超时判负，游戏结束")
-                    }
                 }
             } catch (e: NumberFormatException) {
                 contact.sendMessage("请输入正确的坐标")
