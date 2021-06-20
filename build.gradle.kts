@@ -18,6 +18,27 @@ repositories {
     mavenLocal()
 }
 
+tasks.getByName<Jar>("jar") {
+    manifest {
+        attributes(mapOf(
+            "Main-Class" to "KotlinMain",
+            "Author" to "Minxyzgo"
+        ))
+    }
+}
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        google()
+        maven{ url = uri("https://maven.aliyun.com/repository/google") }
+        maven{ url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven{ url = uri("https://maven.aliyun.com/repository/public") }
+        maven{ url = uri("https://maven.aliyun.com/repository/jcenter") }
+    }
+}
+
 tasks.withType(KotlinJvmCompile::class.java) {
     kotlinOptions.jvmTarget = "1.8"
 }

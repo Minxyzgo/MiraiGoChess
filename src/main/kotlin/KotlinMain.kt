@@ -18,7 +18,7 @@ import java.io.File
 object KotlinMain : KotlinPlugin(
     JvmPluginDescription(
         id = "minxyzgo.goChess",
-        name = "一个围棋插件",
+        name = "mirai-go-chess",
         version = "0.0.1"
     )
 ) {
@@ -31,7 +31,6 @@ object KotlinMain : KotlinPlugin(
     override fun onEnable() {
         baseLoad()
 
-        logger.info("test loaded")
         val cache = File("${System.getProperty("user.dir")}/cache")
         if (!cache.exists()) cache.mkdirs()
         if(enableKatago) {
@@ -42,7 +41,7 @@ object KotlinMain : KotlinPlugin(
             if (group.id !in allGroup) return@subscribeAlways
             message.forEach {
                 if(it is PlainText && it.content.startsWith(".")) {
-                    val goControl = allGoChess[group.id]!!
+                    val goControl = allGoChess.getOrPut(group.id, ::GoControl)
                     goControl.main(it.content.removePrefix("."), group, sender)
                 }
             }
