@@ -1,4 +1,4 @@
-import games.go.KatagoUtils;
+import com.github.minxyzgo.miraiGoChess.go.KatagoUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;

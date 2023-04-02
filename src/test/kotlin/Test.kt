@@ -1,4 +1,4 @@
-import games.go.KatagoUtils
+import com.github.minxyzgo.miraiGoChess.go.KatagoUtils
 
 fun main() {
     KatagoUtils.initKatagoSituationAnalysis(
@@ -9,26 +9,14 @@ fun main() {
     val json = KatagoUtils.analysis(
         listOf(intArrayOf(0, 0), intArrayOf(0, 1), intArrayOf(0, 2)),
         "foo",
-        true
     )
 
     val json2 = KatagoUtils.analysis(
         listOf(intArrayOf(0, 0), intArrayOf(0, 1), intArrayOf(0, 2), intArrayOf(7, 9)),
         "foo",
-        true
     )
-
-    for(pair in json!!.map) {
-        println("key: ${pair.key} value: ${pair.value}")
-    }
-
-    for(pair in json2!!.map) {
-        println("key: ${pair.key} value: ${pair.value}")
-    }
 
     KatagoUtils.writer.close()
     KatagoUtils.reader.close()
     KatagoUtils.process.destroy()
-
-    println("end")
 }

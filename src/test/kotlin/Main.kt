@@ -1,5 +1,6 @@
 //import org.junit.jupiter.api.Test
 
+import com.github.minxyzgo.miraiGoChess.KotlinMain
 import net.mamoe.mirai.alsoLogin
 import net.mamoe.mirai.console.MiraiConsole
 import net.mamoe.mirai.console.plugin.PluginManager.INSTANCE.enable
@@ -13,10 +14,10 @@ suspend fun main() {
 
     MiraiConsoleTerminalLoader.startAsDaemon()
 
-    KotlinMain.enableKatago = true
-    KotlinMain.katagoPath = "D:\\mirai-hello-world\\assets\\katago\\katago.exe"
-    KotlinMain.configPath = "D:\\mirai-hello-world\\assets\\katago\\analysis_example.cfg"
-    KotlinMain.masterId = 123456789L
+//    KotlinMain.enableKatago = true
+//    KotlinMain.katagoPath = "D:\\mirai-hello-world\\assets\\katago\\katago.exe"
+//    KotlinMain.configPath = "D:\\mirai-hello-world\\assets\\katago\\analysis_example.cfg"
+//    KotlinMain.masterId = 123456789L
     KotlinMain.load()
     KotlinMain.enable()
 
